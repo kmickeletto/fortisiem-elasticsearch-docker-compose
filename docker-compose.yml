@@ -1,0 +1,167 @@
+version: '2.2'
+services:
+  coord1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: coord1
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=coord1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=false
+      - node.data=false
+      - node.ingest=false
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    depends_on:
+      - "master1"
+      - "master2"
+    networks:
+      - esnet
+  master1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: master1
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=master1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms3g -Xmx3g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=true
+      - node.data=false
+      - node.ingest=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl","-s" ,"-f", "http://localhost:9200/_cat/health"]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - esnet
+
+  master2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: master2
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=master2
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms3g -Xmx3g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=true
+      - node.data=false
+      - node.ingest=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl","-s" ,"-f", "http://localhost:9200/_cat/health"]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - esnet
+
+  data1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: data1
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=data1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=false
+      - node.data=true
+      - node.ingest=false
+      - node.attr.box_type=hot
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data1:/usr/share/elasticsearch/data
+    depends_on:
+      - "master1"
+      - "master2"
+    networks:
+      - esnet
+  data2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: data2
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=data2
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=false
+      - node.data=true
+      - node.ingest=false
+      - node.attr.box_type=warm
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data2:/usr/share/elasticsearch/data
+    depends_on:
+      - "master1"
+      - "master2"
+    networks:
+      - esnet
+  data3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    container_name: data3
+    environment:
+      - cluster.name=fortisiem-cluster
+      - node.name=data3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - "discovery.zen.ping.unicast.hosts=master1,master2"
+      - node.master=false
+      - node.data=true
+      - node.ingest=false
+      - node.attr.box_type=warm
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data3:/usr/share/elasticsearch/data
+    depends_on:
+      - "master1"
+      - "master2"
+    networks:
+      - esnet
+
+volumes:
+  data1:
+    driver: local-persist
+    driver_opts:
+      mountpoint: /mnt/data1
+  data2:
+    driver: local-persist
+    driver_opts:
+      mountpoint: /mnt/data2
+  data3:
+    driver: local-persist
+    driver_opts:
+      mountpoint: /mnt/data3
+
+networks:
+  esnet:
+    driver_opts:
+      o: "com.docker.network.bridge.enable_icc=true"
+      o: "com.docker.network.bridge.enable_ip_masquerade=true"
+      o: "com.docker.network.bridge.host_binding_ipv4=192.168.128.221"
